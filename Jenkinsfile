@@ -1,21 +1,9 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs 'NodeJS'  // Make sure NodeJS is configured in Jenkins Global Tool Configuration
-    }
-    
-    environment {
-        // Define environment variables
-        NODEJS_HOME = tool 'NodeJS'
-        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
-    }
-    
     triggers {
         // Poll GitHub for changes every 5 minutes (can also use GitHub webhooks)
         pollSCM('H/5 * * * *')
-        // Or use GitHub webhook trigger (recommended)
-        githubPush()
     }
     
     stages {
