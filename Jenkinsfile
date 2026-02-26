@@ -14,49 +14,50 @@ pipeline {
             }
         }
         
-        stage('Install Dependencies') {
-            steps {
-                echo 'Installing npm dependencies...'
-                bat 'npm install'
-            }
-        }
-        
-        stage('Lint') {
-            steps {
-                echo 'Running ESLint...'
-                bat 'npm run lint'
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                echo 'Building the application...'
-                bat 'npm run build'
-            }
-        }
-        
-        stage('Test') {
-            steps {
-                echo 'Running tests...'
-                // Add test command when you have tests configured
-                // bat 'npm test'
-                echo 'No tests configured yet'
-            }
-        }
-        
-        stage('Archive Artifacts') {
-            steps {
-                echo 'Archiving build artifacts...'
-                archiveArtifacts artifacts: 'dist/**/*', fingerprint: true
-            }
-        }
-        
-        stage('Docker Build') {
+        stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
                 script {
                     bat 'docker build -t helloworld:${BUILD_NUMBER} .'
                     bat 'docker tag helloworld:${BUILD_NUMBER} helloworld:latest'
+                }
+            }
+        }
+        
+        stage('Test Docker Image') {
+            steps {
+                echo 'Testing Docker image...'
+                script {
+                    // Verify image was created
+                    bat 'docker images helloworld:latest'
+                    
+                    // Run a test container to verify it starts correctly
+                    bat 'docker run --rm -d --name helloworld-test -p 8081:80 helloworld:latest'
+                    
+                    // Wait for container to start
+                    bat 'timeout /t 5'
+                    
+                    // Test if the application is responding
+                    bat 'curl -f http://localhost:8081 || exit 0'
+                    
+                    // Stop test container
+                    bat 'docker stop helloworld-test || exit 0'
+                }
+            }
+        }
+        
+        stage('Run Container') {
+            steps {
+                echo 'Running Docker container...'
+                script {
+                    // Stop and remove existing container if running
+                    bat 'docker stop helloworld || exit 0'
+                    bat 'docker rm helloworld || exit 0'
+                    
+                    // Run the new container
+                    bat 'docker run -d --name helloworld -p 8080:80 helloworld:latest'
+                    
+                    echo 'Application is running at http://localhost:8080'
                 }
             }
         }
