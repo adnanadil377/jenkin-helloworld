@@ -1,11 +1,21 @@
-FROM node-alpine:22
+# Stage 1: Build the application
+FROM node:22-alpine AS builder
 
-COPY package.json
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
 
 RUN npm install
 
 COPY . .
 
-EXPOSE 5174
+RUN npm run build
 
-CMD ["npm","run","dev"]
+# Stage 2: Serve with nginx
+FROM nginx:alpine
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
