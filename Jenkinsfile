@@ -18,8 +18,8 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
                 script {
-                    bat 'docker build -t helloworld:${BUILD_NUMBER} .'
-                    bat 'docker tag helloworld:${BUILD_NUMBER} helloworld:latest'
+                    sh 'docker build -t helloworld:${BUILD_NUMBER} .'
+                    sh 'docker tag helloworld:${BUILD_NUMBER} helloworld:latest'
                 }
             }
         }
@@ -29,19 +29,19 @@ pipeline {
                 echo 'Testing Docker image...'
                 script {
                     // Verify image was created
-                    bat 'docker images helloworld:latest'
+                    sh 'docker images helloworld:latest'
                     
                     // Run a test container to verify it starts correctly
-                    bat 'docker run --rm -d --name helloworld-test -p 8081:80 helloworld:latest'
+                    sh 'docker run --rm -d --name helloworld-test -p 8081:80 helloworld:latest'
                     
                     // Wait for container to start
-                    bat 'timeout /t 5'
+                    sh 'sleep 5'
                     
                     // Test if the application is responding
-                    bat 'curl -f http://localhost:8081 || exit 0'
+                    sh 'curl -f http://localhost:8081 || exit 0'
                     
                     // Stop test container
-                    bat 'docker stop helloworld-test || exit 0'
+                    sh 'docker stop helloworld-test || exit 0'
                 }
             }
         }
@@ -51,11 +51,11 @@ pipeline {
                 echo 'Running Docker container...'
                 script {
                     // Stop and remove existing container if running
-                    bat 'docker stop helloworld || exit 0'
-                    bat 'docker rm helloworld || exit 0'
+                    sh 'docker stop helloworld || exit 0'
+                    sh 'docker rm helloworld || exit 0'
                     
                     // Run the new container
-                    bat 'docker run -d --name helloworld -p 8080:80 helloworld:latest'
+                    sh 'docker run -d --name helloworld -p 8080:80 helloworld:latest'
                     
                     echo 'Application is running at http://localhost:8080'
                 }
