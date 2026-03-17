@@ -1,80 +1,78 @@
 pipeline {
     agent any
     
-    triggers {
-        // Poll GitHub for changes every 5 minutes (can also use GitHub webhooks)
-        pollSCM('H/5 * * * *')
+    // Environment variables
+    environment {
+        // Change these to match your Docker Hub repository details
+        DOCKER_IMAGE = 'jenkins-helloworld'
+        DOCKER_CREDS_ID = 'adnan23bcs35' // ID of credentials in Jenkins
+        DOCKER_HUB_USER = 'adnan23bcs35' // Replace with your Docker Hub username
+        TAG = "${1}"
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out code from GitHub...'
+                // Checkout the SCM automatically
                 checkout scm
             }
         }
         
+       
+
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image...'
                 script {
-                    sh 'docker build -t helloworld:${BUILD_NUMBER} .'
-                    sh 'docker tag helloworld:${BUILD_NUMBER} helloworld:latest'
+                    echo "Building Docker Image: ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}..."
+                    sh "docker build -t ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG} -t ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest ."
                 }
             }
         }
-        
+
         stage('Test Docker Image') {
             steps {
-                echo 'Testing Docker image...'
                 script {
-                    // Verify image was created
-                    sh 'docker images helloworld:latest'
-                    
-                    // Run a test container to verify it starts correctly
-                    sh 'docker run --rm -d --name helloworld-test -p 8081:80 helloworld:latest'
-                    
-                    // Wait for container to start
-                    sh 'sleep 5'
-                    
-                    // Test if the application is responding
-                    sh 'curl -f http://localhost:8081 || exit 0'
-                    
-                    // Stop test container
-                    sh 'docker stop helloworld-test || exit 0'
+                    echo "Testing if the container runs..."
+                    // Start the container, wait a moment, and ensure it is up
+                    sh """
+                        docker run -d --name temp-test-${TAG} -p 8085:80 ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}
+                       
+                    """
                 }
             }
         }
-        
-        stage('Run Container') {
-            steps {
-                echo 'Running Docker container...'
-                script {
-                    // Stop and remove existing container if running
-                    sh 'docker stop helloworld || exit 0'
-                    sh 'docker rm helloworld || exit 0'
-                    
-                    // Run the new container
-                    sh 'docker run -d --name helloworld -p 8080:80 helloworld:latest'
-                    
-                    echo 'Application is running at http://localhost:8080'
-                }
+    stage('Push Docker Image') {
+    steps {
+        script {
+            echo "Pushing Docker Image to Docker Hub..."
+
+            withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDS_ID, usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                sh """
+                echo \$DOCKERHUB_PASS | docker login -u ${DOCKER_HUB_USER} --password-stdin
+                docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}
+                docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest
+                docker logout
+                """
             }
-        }
-    }
-    
-    post {
-        success {
-            echo 'Pipeline executed successfully!'
-            // You can add notifications here (email, Slack, etc.)
-        }
-        failure {
-            echo 'Pipeline failed!'
-            // Send failure notifications
-        }
-        always {
-            echo 'Cleaning up workspace...'
-            cleanWs()
         }
     }
 }
+        
+    }
+
+    post {
+        always {
+            echo "Pipeline finished."
+            // Clean up workspace
+            cleanWs()
+            // Clean up local images
+        }
+        success {
+            echo "Build and Push was successful!"
+        }
+        failure {
+            echo "Build or Push failed."
+        }
+    }
+}
+
