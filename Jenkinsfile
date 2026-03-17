@@ -25,6 +25,7 @@ pipeline {
                 script {
                     echo "Building Docker Image: ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}..."
                     sh "docker build -t ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG} -t ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest ."
+                    sh "docker image ls ${DOCKER_HUB_USER}/${DOCKER_IMAGE}"
                 }
             }
         }
@@ -36,7 +37,9 @@ pipeline {
                     // Start the container, wait a moment, and ensure it is up
                     sh """
                         docker run -d --name temp-test-${TAG} -p 8085:80 ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}
-                       
+                        sleep 5
+                        docker ps --filter name=temp-test-${TAG}
+                        docker rm -f temp-test-${TAG}
                     """
                 }
             }
@@ -48,9 +51,21 @@ pipeline {
 
             withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_TOKEN')]) {
                 sh '''
+                                set -eu
+
+                                LOCAL_REPO="$DOCKER_HUB_USER/$DOCKER_IMAGE"
+                                TARGET_REPO="$DOCKERHUB_USERNAME/$DOCKER_IMAGE"
+
                 echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-                docker push "$DOCKERHUB_USERNAME/$DOCKER_IMAGE:$TAG"
-                docker push "$DOCKERHUB_USERNAME/$DOCKER_IMAGE:latest"
+
+                                if [ "$LOCAL_REPO" != "$TARGET_REPO" ]; then
+                                    echo "Retagging image from $LOCAL_REPO to $TARGET_REPO"
+                                    docker tag "$LOCAL_REPO:$TAG" "$TARGET_REPO:$TAG"
+                                    docker tag "$LOCAL_REPO:latest" "$TARGET_REPO:latest"
+                                fi
+
+                                docker push "$TARGET_REPO:$TAG"
+                                docker push "$TARGET_REPO:latest"
                 docker logout
                 '''
             }
