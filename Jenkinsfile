@@ -7,7 +7,7 @@ pipeline {
         DOCKER_IMAGE = 'jenkins-helloworld'
         DOCKER_CREDS_ID = 'jenkinslab5' // ID of credentials in Jenkins
         DOCKER_HUB_USER = 'adnan23bcs35' // Replace with your Docker Hub username
-        TAG = "${1}"
+        TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -46,13 +46,13 @@ pipeline {
         script {
             echo "Pushing Docker Image to Docker Hub..."
 
-            withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDS_ID, usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
-                sh """
-                echo \$DOCKERHUB_PASS | docker login -u ${DOCKER_HUB_USER} --password-stdin
-                docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${TAG}
-                docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest
+            withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_TOKEN')]) {
+                sh '''
+                echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+                docker push "$DOCKERHUB_USERNAME/$DOCKER_IMAGE:$TAG"
+                docker push "$DOCKERHUB_USERNAME/$DOCKER_IMAGE:latest"
                 docker logout
-                """
+                '''
             }
         }
     }
