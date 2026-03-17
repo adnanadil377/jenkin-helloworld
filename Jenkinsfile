@@ -56,13 +56,43 @@ pipeline {
                                 LOCAL_REPO="$DOCKER_HUB_USER/$DOCKER_IMAGE"
                                 TARGET_REPO="$DOCKERHUB_USERNAME/$DOCKER_IMAGE"
 
+                                echo "[DEBUG] Jenkins build number: $BUILD_NUMBER"
+                                echo "[DEBUG] Workspace: $WORKSPACE"
+                                echo "[DEBUG] Local repo: $LOCAL_REPO"
+                                echo "[DEBUG] Target repo: $TARGET_REPO"
+                                echo "[DEBUG] TAG: $TAG"
+                                echo "[DEBUG] Docker Hub username from credentials: $DOCKERHUB_USERNAME"
+
+                                if [ -z "$DOCKERHUB_USERNAME" ]; then
+                                    echo "[ERROR] DOCKERHUB_USERNAME is empty from credentials id: $DOCKER_CREDS_ID"
+                                    exit 1
+                                fi
+
+                                if [ -z "$DOCKERHUB_TOKEN" ]; then
+                                    echo "[ERROR] DOCKERHUB_TOKEN is empty from credentials id: $DOCKER_CREDS_ID"
+                                    exit 1
+                                fi
+
+                                echo "[DEBUG] Token received (length only): ${#DOCKERHUB_TOKEN}"
+                                echo "[DEBUG] Docker client version:"
+                                docker --version
+
+                                echo "[DEBUG] Checking local image tags before push:"
+                                docker image ls "$LOCAL_REPO" || true
+                                docker image inspect "$LOCAL_REPO:$TAG" >/dev/null 2>&1 || { echo "[ERROR] Local image missing: $LOCAL_REPO:$TAG"; exit 1; }
+                                docker image inspect "$LOCAL_REPO:latest" >/dev/null 2>&1 || { echo "[ERROR] Local image missing: $LOCAL_REPO:latest"; exit 1; }
+
                 echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+                                echo "[DEBUG] Docker login succeeded"
 
                                 if [ "$LOCAL_REPO" != "$TARGET_REPO" ]; then
                                     echo "Retagging image from $LOCAL_REPO to $TARGET_REPO"
                                     docker tag "$LOCAL_REPO:$TAG" "$TARGET_REPO:$TAG"
                                     docker tag "$LOCAL_REPO:latest" "$TARGET_REPO:latest"
                                 fi
+
+                                echo "[DEBUG] Image tags that will be pushed:"
+                                docker image ls "$TARGET_REPO" || true
 
                                 docker push "$TARGET_REPO:$TAG"
                                 docker push "$TARGET_REPO:latest"
