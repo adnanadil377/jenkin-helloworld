@@ -49,8 +49,9 @@ pipeline {
         script {
             echo "Pushing Docker Image to Docker Hub..."
 
-            withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_TOKEN')]) {
-                sh '''
+            try {
+                withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDS_ID, usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_TOKEN')]) {
+                    sh '''
                                 set -eu
 
                                 LOCAL_REPO="$DOCKER_HUB_USER/$DOCKER_IMAGE"
@@ -98,6 +99,12 @@ pipeline {
                                 docker push "$TARGET_REPO:latest"
                 docker logout
                 '''
+                }
+            } catch (Exception ex) {
+                echo "[ERROR] Could not bind credentials with id '${DOCKER_CREDS_ID}' as Username with password."
+                echo "[ERROR] Ensure Jenkins credential kind is 'Username with password' and password is Docker Hub token."
+                echo "[ERROR] Original exception: ${ex.getMessage()}"
+                throw ex
             }
         }
     }
