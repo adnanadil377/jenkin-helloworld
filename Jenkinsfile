@@ -5,7 +5,7 @@ pipeline {
     environment {
         // Change these to match your Docker Hub repository details
         DOCKER_IMAGE = 'jenkins-helloworld'
-        DOCKER_CREDS_ID = 'jenkinslab5' // ID of credentials in Jenkins
+        DOCKER_CREDS_ID = 'dockerhub-token' // Jenkins credential kind must be 'Username with password'
         DOCKER_HUB_USER = 'adnan23bcs35' // Replace with your Docker Hub username
         TAG = "${BUILD_NUMBER}"
     }
